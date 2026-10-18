@@ -1,0 +1,54 @@
+# Node.js / Vite
+node_modules/
+/dist/
+.vite/
+*.tsbuildinfo
+
+# Rust / Tauri build outputs and generated schemas
+/target/
+/src-tauri/target/
+/src-tauri/gen/
+
+# Playwright reports, screenshots and temporary browser profiles
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/artifacts/
+/coverage/
+
+# Local application data; never commit account credentials or download history
+settings.json
+downloads.json
+EBWebView/
+*.part
+
+# Environment files; keep examples available for contributors
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local signing keys
+*.pfx
+*.p12
+*.key
+
+# Editor and operating-system files
+.vscode/
+.idea/
+*.suo
+*.user
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Keep package-lock.json, src-tauri/Cargo.lock, capabilities and icon assets tracked.
