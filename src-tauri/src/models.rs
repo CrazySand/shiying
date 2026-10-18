@@ -5,6 +5,12 @@ use serde::{Deserialize, Serialize};
 pub struct Settings {
     pub download_dir: String,
     pub query_id: String,
+    #[serde(default = "default_max_concurrent_downloads")]
+    pub max_concurrent_downloads: usize,
+}
+
+pub fn default_max_concurrent_downloads() -> usize {
+    2
 }
 
 #[derive(Serialize)]

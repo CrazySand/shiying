@@ -1,6 +1,6 @@
 [package]
 name = "shiying"
-version = "0.1.0"
+version = "0.1.1"
 description = "拾影 — 轻量 X 视频下载工具"
 edition = "2021"
 

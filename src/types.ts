@@ -1,4 +1,4 @@
-export interface Settings { downloadDir: string; queryId: string }
+export interface Settings { downloadDir: string; queryId: string; maxConcurrentDownloads: number }
 export interface SettingsView extends Settings { dataDir: string; cookie: string; authorization: string; hasCookie: boolean; hasAuthorization: boolean }
 export interface Variant { url: string; bitrate: number; label: string }
 export interface Video { id: string; tweetId: string; title: string; thumbnail: string; variants: Variant[] }

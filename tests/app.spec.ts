@@ -195,3 +195,61 @@ test('deleting a download record updates the list only after a successful save',
   await page.reload()
   await expect(page.getByText('暂无下载', { exact: true })).toBeVisible()
 })
+
+test('download lists stay inside the window and concurrency is saved in settings', async ({ page }) => {
+  await page.setViewportSize({ width: 740, height: 680 })
+  await page.addInitScript(() => {
+    let limit = Number(localStorage.getItem('downloadLimit') || 2)
+    const settings = () => ({ downloadDir: 'C:/Downloads', dataDir: 'C:/AppData/拾影', queryId: 'query', maxConcurrentDownloads: limit, cookie: 'auth_token=example; ct0=csrf', authorization: 'Bearer example', hasCookie: true, hasAuthorization: true })
+    Object.defineProperty(window, 'isTauri', { value: true })
+    Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {
+      transformCallback: () => 1,
+      invoke: async (command: string, args: Record<string, unknown>) => {
+        if (command === 'plugin:event|listen') return 1
+        if (command === 'get_settings') return settings()
+        if (command === 'list_tasks') return Array.from({ length: 10 }, (_, i) => ({
+          id: 'task-' + i, title: '下载任务 ' + (i + 1), filename: 'example-' + i + '.mp4',
+          path: 'C:/Downloads/example-' + i + '.mp4', thumbnail: '', status: ['completed', 'running', 'queued', 'failed', 'cancelled'][i % 5],
+          downloaded: 1024, total: 1024, speed: 0, error: null,
+        }))
+        if (command === 'parse_video') return Array.from({ length: 3 }, (_, i) => ({
+          id: '123_' + i, tweetId: '123', title: '视频预览 ' + (i + 1), thumbnail: '',
+          variants: [{ url: 'https://video.twimg.com/example.mp4', bitrate: 1000, label: '720 × 1280 · 推荐' }],
+        }))
+        if (command === 'save_settings') {
+          limit = (args.settings as { maxConcurrentDownloads: number }).maxConcurrentDownloads
+          localStorage.setItem('downloadLimit', String(limit))
+          return settings()
+        }
+        throw new Error('Unexpected mocked command: ' + command)
+      },
+    } })
+  })
+  await page.goto('/')
+  await expect(page.locator('.task-row')).toHaveCount(10)
+  await page.getByRole('textbox', { name: 'X 视频链接或推文 ID' }).fill('123')
+  await page.getByRole('button', { name: '解析', exact: true }).click()
+  await expect(page.locator('.video-card')).toHaveCount(3)
+  const noOuterScroll = () => page.locator('.page-scroll-wrap').evaluate(el => el.scrollHeight <= el.clientHeight + 1)
+  await expect.poll(noOuterScroll).toBe(true)
+  await expect(page.locator('.download-footer')).toBeInViewport()
+  expect(await page.locator('.task-list .el-scrollbar__wrap').evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true)
+  await page.screenshot({ path: 'artifacts/window-concurrency.png', animations: 'disabled' })
+  await page.setViewportSize({ width: 600, height: 460 })
+  await expect.poll(noOuterScroll).toBe(true)
+  await expect(page.locator('.download-footer')).toBeInViewport()
+  await page.getByRole('button', { name: '设置', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '拾影设置' })
+  const concurrency = dialog.getByRole('radiogroup', { name: '同时下载数量' })
+  await expect(concurrency).toBeVisible()
+  await expect(concurrency.getByRole('radio', { name: '2', exact: true })).toBeChecked()
+  await concurrency.getByText('4', { exact: true }).click()
+  await expect(dialog).toContainText('同时下载 4 个视频，其余自动排队')
+  await dialog.getByRole('button', { name: '保存设置' }).click()
+  await expect(dialog).not.toBeVisible()
+  await page.reload()
+  await page.getByRole('button', { name: '设置', exact: true }).click()
+  await expect(concurrency.getByRole('radio', { name: '4', exact: true })).toBeChecked()
+  await page.setViewportSize({ width: 740, height: 680 })
+  await page.screenshot({ path: 'artifacts/concurrency-selector.png', animations: 'disabled' })
+})

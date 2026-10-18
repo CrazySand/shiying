@@ -12,7 +12,7 @@
 ## 功能
 
 - **链接解析**：支持 X / Twitter 推文链接或推文 ID，展示视频封面和可用画质。
-- **下载队列**：最多同时下载 2 个视频，显示进度、速度和文件大小，支持取消。
+- **下载队列**：支持同时下载 1–8 个视频，默认 2 个，显示进度、速度和文件大小，支持取消。
 - **内容命名**：下载完成后，以视频文件内容的 32 位小写 MD5 命名。
 - **历史记录**：本地保存下载记录，重启后恢复标题、封面、文件路径和状态。
 - **文件定位**：下载完成后，可在资源管理器中定位视频文件。
@@ -23,7 +23,7 @@
 
 ## 使用
 
-1. 打开右上角的设置，选择视频保存位置。
+1. 打开右上角的设置，选择视频保存位置和同时下载数量（1–8 个，默认 2 个）。
 2. 填写自己的 X 登录 **Cookie** 和 **Authorization**，点击「保存设置」。
 3. 粘贴推文链接或推文 ID，点击输入框右侧的箭头，或按回车解析。
 4. 在视频卡片中选择画质，点击下载。
@@ -61,6 +61,8 @@ https://twitter.com/username/status/1234567890123456789
 ```
 
 同一保存目录下，内容完全相同的视频会复用已有文件；内容不同的同名文件不会被覆盖。视频标题仍保留在下载列表中，方便辨认。
+
+修改并发数并保存后立即生效：提高上限会启动等待中的任务；降低上限不会中断已有下载，而是在运行任务减少后按新上限启动后续任务。
 
 任务包含「排队中」「下载中」「已完成」「失败」「已取消」五种状态。关闭应用后，尚未完成的任务会在下次启动时标记为失败，并注明下载已中断，需要重新解析下载，暂不支持断点续传。
 
@@ -129,6 +131,34 @@ cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
 
 `npm run build` 用于检查并构建前端，输出到 `dist/`，不会生成桌面安装包。
 
+## 版本管理
+
+项目以根目录 `package.json` 的 `version` 为唯一版本来源。`tauri.conf.json` 通过 `../package.json` 读取版本，Rust 项目及锁文件由脚本同步。
+
+更新版本，例如：
+
+```powershell
+npm run version:set -- 0.1.2
+```
+
+如果已经手动修改了 `package.json`，执行：
+
+```powershell
+npm run version:sync
+```
+
+检查各处版本是否一致，以及验证版本脚本：
+
+```powershell
+npm run version:check
+npm run test:version
+```
+
+开发服务、前端构建和安装包构建会在启动前自动同步版本。直接执行 Cargo 命令前，可先运行 `npm run version:sync`。
+
+版本命令只更新配置，不创建 Git 提交或标签，也不触发打包。
+
+
 ## Windows 打包
 
 在开发环境准备完成后执行：
@@ -137,11 +167,13 @@ cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
 npm run build:exe
 ```
 
-该命令会构建前端、编译 Rust，并生成 NSIS 安装程序。
+该命令会构建前端、编译 Rust，生成 NSIS 安装程序，并将带版本号及 Windows x64 标识的发布文件整理到 artifacts/releases/<版本号>/。脚本会检查应用确为 x64 架构。
 
 | 产物 | 位置 |
 | --- | --- |
-| 应用可执行文件 | `src-tauri/target/release/shiying.exe` |
+| 发布版可执行文件 | `artifacts/releases/<版本号>/shiying_<版本号>_windows_x64.exe` |
+| 发布版安装程序 | `artifacts/releases/<版本号>/shiying_<版本号>_windows_x64_setup.exe` |
+| 原始可执行文件 | `src-tauri/target/release/shiying.exe` |
 | NSIS 安装程序 | `src-tauri/target/release/bundle/nsis/` |
 | 前端静态资源 | `dist/` |
 
@@ -165,6 +197,7 @@ src-tauri/
 │  ├─ commands.rs    前后端命令入口
 │  ├─ parser.rs      X 视频解析
 │  ├─ downloader.rs  下载队列、MD5 命名及文件保存
+│  ├─ concurrency.rs 可动态调整的并发下载控制
 │  ├─ history.rs     下载记录读写和重启恢复
 │  ├─ settings.rs    设置及凭据管理
 │  ├─ storage.rs     数据目录及旧数据迁移
@@ -172,6 +205,7 @@ src-tauri/
 ├─ icons/            应用图标及 SVG 源文件
 └─ tauri.conf.json   桌面窗口与打包配置
 
+scripts/             版本同步与校验脚本
 tests/               Playwright 界面测试
 ```
 

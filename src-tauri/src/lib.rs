@@ -1,4 +1,5 @@
 mod commands;
+mod concurrency;
 mod downloader;
 mod history;
 mod models;
@@ -25,13 +26,21 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             storage::initialize(app.handle()).map_err(std::io::Error::other)?;
-            app.manage(settings::load(app.handle()).map_err(std::io::Error::other)?);
-            app.manage(Arc::new(
-                downloader::DownloadManager::load(
-                    storage::path(app.handle(), "downloads.json").map_err(std::io::Error::other)?,
-                )
-                .map_err(std::io::Error::other)?,
-            ));
+            let settings = settings::load(app.handle()).map_err(std::io::Error::other)?;
+            let downloads = downloader::DownloadManager::load(
+                storage::path(app.handle(), "downloads.json").map_err(std::io::Error::other)?,
+            )
+            .map_err(std::io::Error::other)?;
+            let limit = settings
+                .settings
+                .lock()
+                .map_err(|e| std::io::Error::other(e.to_string()))?
+                .max_concurrent_downloads;
+            downloads
+                .set_concurrency(limit)
+                .map_err(std::io::Error::other)?;
+            app.manage(settings);
+            app.manage(Arc::new(downloads));
             Ok(())
         })
         .invoke_handler(move |invoke| {

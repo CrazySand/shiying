@@ -1,7 +1,7 @@
 {
   "name": "shiying",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,15 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "build:exe": "tauri build --bundles nsis",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "version:set": "node scripts/version.mjs",
+    "version:sync": "node scripts/version.mjs",
+    "version:check": "node scripts/version.mjs --check",
+    "test:version": "node --test scripts/version.test.mjs",
+    "predev": "npm run version:sync",
+    "prebuild": "npm run version:sync",
+    "prebuild:exe": "npm run version:sync",
+    "postbuild:exe": "node scripts/package-exe.mjs"
   },
   "dependencies": {
     "@lucide/vue": "^1.59.0",

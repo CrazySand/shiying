@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { ElMessage, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElScrollbar, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSegmented, ElScrollbar, type FormInstance, type FormRules } from 'element-plus'
 import { X, FolderOpen, LoaderCircle } from '@lucide/vue'
 import { api } from '../api'
 import type { Settings, SettingsView } from '../types'
 
 const props = defineProps<{ settings: SettingsView }>()
 const emit = defineEmits<{ close: []; saved: [value: SettingsView] }>()
+const concurrencyOptions = Array.from({ length: 8 }, (_, index) => ({ label: String(index + 1), value: index + 1 }))
 const visible = ref(true)
 const formRef = ref<FormInstance>()
-const form = reactive<Settings>({ downloadDir: props.settings.downloadDir, queryId: props.settings.queryId })
+const form = reactive<Settings>({ downloadDir: props.settings.downloadDir, queryId: props.settings.queryId, maxConcurrentDownloads: props.settings.maxConcurrentDownloads ?? 2 })
 const cookie = ref(props.settings.cookie || '')
 const authorization = ref(props.settings.authorization || '')
 const saving = ref(false)
@@ -54,6 +55,12 @@ async function save() {
         </ElFormItem>
         <ElFormItem label="数据目录" for="data-dir">
           <ElInput id="data-dir" :model-value="settings.dataDir" :title="settings.dataDir" readonly placeholder="在桌面应用中显示"/>
+        </ElFormItem>
+        <ElFormItem label="同时下载数量" for="max-concurrent-downloads">
+          <div class="concurrency-control">
+            <ElSegmented id="max-concurrent-downloads" v-model="form.maxConcurrentDownloads" class="concurrency-selector" :options="concurrencyOptions" aria-label="同时下载数量"/>
+            <p class="concurrency-description">同时下载 {{ form.maxConcurrentDownloads }} 个视频，其余自动排队</p>
+          </div>
         </ElFormItem>
         <ElFormItem for="cookie">
           <template #label>X 登录 Cookie</template>

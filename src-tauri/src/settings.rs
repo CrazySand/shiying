@@ -49,6 +49,7 @@ pub fn load(app: &AppHandle) -> Result<AppSettings, String> {
                     .to_string_lossy()
                     .into_owned(),
                 query_id: "6uCvnic3m5reVuehkvHa3w".into(),
+                max_concurrent_downloads: 2,
             },
         }
     };
@@ -85,6 +86,9 @@ pub fn save(
     cookie: Option<String>,
     authorization: Option<String>,
 ) -> Result<SettingsView, String> {
+    if !(1..=8).contains(&settings.max_concurrent_downloads) {
+        return Err("同时下载数量必须在 1–8 之间".into());
+    }
     if settings.query_id.is_empty()
         || settings.query_id.len() > 200
         || !settings
@@ -186,6 +190,7 @@ mod tests {
     fn old_settings_without_credentials_still_load() {
         let stored: StoredSettings =
             serde_json::from_str(r#"{"downloadDir":"C:/Downloads","queryId":"query"}"#).unwrap();
+        assert_eq!(stored.settings.max_concurrent_downloads, 2);
         assert!(stored.cookie.is_empty());
         assert!(stored.authorization.is_empty());
     }

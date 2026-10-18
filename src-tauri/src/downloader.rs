@@ -1,4 +1,5 @@
 use crate::{
+    concurrency::DownloadSlots,
     history,
     models::{DownloadTask, Video},
     parser::valid_media_url,
@@ -12,10 +13,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tauri::{AppHandle, Emitter};
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    sync::Semaphore,
-};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -25,7 +23,7 @@ struct TaskEntry {
 }
 pub struct DownloadManager {
     tasks: Mutex<HashMap<String, TaskEntry>>,
-    slots: Arc<Semaphore>,
+    slots: DownloadSlots,
     history_path: PathBuf,
 }
 impl DownloadManager {
@@ -44,7 +42,7 @@ impl DownloadManager {
             .collect();
         Ok(Self {
             tasks: Mutex::new(tasks),
-            slots: Arc::new(Semaphore::new(2)),
+            slots: DownloadSlots::new(2),
             history_path,
         })
     }
@@ -56,6 +54,9 @@ impl DownloadManager {
                 .then_with(|| b.id.cmp(&a.id))
         });
         result
+    }
+    pub fn set_concurrency(&self, limit: usize) -> Result<(), String> {
+        self.slots.set_limit(limit)
     }
     pub fn list(&self) -> Result<Vec<DownloadTask>, String> {
         let tasks = self.tasks.lock().map_err(|e| e.to_string())?;
@@ -208,10 +209,7 @@ async fn run(
     path: &std::path::Path,
     cancel: &CancellationToken,
 ) -> Result<PathBuf, String> {
-    let _permit = tokio::select! {
-        _ = cancel.cancelled() => return Err("下载已取消".into()),
-        permit = manager.slots.clone().acquire_owned() => permit.map_err(|_| "下载队列已关闭")?,
-    };
+    let _permit = manager.slots.acquire(cancel).await?;
     manager.update(app, id, |task| task.status = "running".into());
     let partial = path.with_extension("mp4.part");
     // create_new avoids overwriting any existing file, including an unfinished task.

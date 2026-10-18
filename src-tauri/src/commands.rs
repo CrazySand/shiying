@@ -16,12 +16,15 @@ pub fn get_settings(state: State<'_, AppSettings>) -> Result<SettingsView, Strin
 #[tauri::command]
 pub fn save_settings(
     app: AppHandle,
+    manager: State<'_, Arc<DownloadManager>>,
     state: State<'_, AppSettings>,
     settings: Settings,
     cookie: Option<String>,
     authorization: Option<String>,
 ) -> Result<SettingsView, String> {
-    settings::save(&app, &state, settings, cookie, authorization)
+    let view = settings::save(&app, &state, settings, cookie, authorization)?;
+    manager.set_concurrency(view.settings.max_concurrent_downloads)?;
+    Ok(view)
 }
 
 #[tauri::command]

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ElButton, ElConfigProvider, ElContainer, ElHeader, ElMain, ElMessage, ElScrollbar, ElSegmented, ElSkeleton, ElSkeletonItem, type MessageHandler } from 'element-plus'
+import { ElButton, ElConfigProvider, ElContainer, ElEmpty, ElHeader, ElMain, ElMessage, ElScrollbar, ElSegmented, ElSkeleton, ElSkeletonItem, type MessageHandler } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import { Aperture, Settings2, ArrowDownToLine, FolderOpen } from '@lucide/vue'
+import { Aperture, Settings2, ArrowDownToLine, FolderOpen, Film } from '@lucide/vue'
 import LinkInput from './components/LinkInput.vue'
 import VideoCard from './components/VideoCard.vue'
 import DownloadList from './components/DownloadList.vue'
@@ -11,7 +11,7 @@ import { useDownloads } from './composables/useDownloads'
 import { api, desktop } from './api'
 import type { SettingsView, Video } from './types'
 
-const settings = ref<SettingsView>({ downloadDir: '', dataDir: '', queryId: '6uCvnic3m5reVuehkvHa3w', cookie: '', authorization: '', hasCookie: false, hasAuthorization: false })
+const settings = ref<SettingsView>({ downloadDir: '', dataDir: '', maxConcurrentDownloads: 2, queryId: '6uCvnic3m5reVuehkvHa3w', cookie: '', authorization: '', hasCookie: false, hasAuthorization: false })
 const showSettings = ref(false)
 const parsing = ref(false)
 const videos = ref<Video[]>([])
@@ -74,11 +74,12 @@ function closeSettings() { showSettings.value = false; pendingInput.value = '' }
     <ElMain class="app-main">
       <section class="input-section" aria-label="解析视频"><LinkInput :busy="parsing" @parse="parse"/></section>
       <div v-if="!desktop" class="preview-banner">界面预览</div>
-      <section v-if="parsing || videos.length" class="results-section" aria-label="解析结果" :aria-busy="parsing">
+      <section class="results-section" aria-label="解析结果" :aria-busy="parsing">
         <ElSkeleton v-if="parsing" animated class="video-loading" role="status" aria-label="正在获取视频">
           <template #template><div class="loading-preview"><ElSkeletonItem variant="image" class="loading-thumbnail"/><div class="loading-details"><ElSkeletonItem variant="text"/><ElSkeletonItem variant="text" class="loading-short"/><ElSkeletonItem variant="button"/></div></div></template>
         </ElSkeleton>
-        <template v-else><ElScrollbar class="video-list" max-height="260px" wrap-class="list-scroll-wrap"><VideoCard v-for="video in videos" :key="video.id" :video="video" :busy="adding.includes(video.id)" @download="download(video, $event)" @dismiss="videos = videos.filter(item => item.id !== video.id)"/></ElScrollbar></template>
+        <template v-else-if="videos.length"><ElScrollbar class="video-list" max-height="min(260px, 28vh)" wrap-class="list-scroll-wrap"><VideoCard v-for="video in videos" :key="video.id" :video="video" :busy="adding.includes(video.id)" @download="download(video, $event)" @dismiss="videos = videos.filter(item => item.id !== video.id)"/></ElScrollbar></template>
+        <ElEmpty v-else class="results-placeholder" description="视频预览" :image-size="28"><template #image><Film :size="28"/></template></ElEmpty>
       </section>
       <section class="downloads-section" :class="{ 'has-tasks': tasks.length > 0 }" aria-label="下载列表">
         <div class="section-heading"><h2><ArrowDownToLine :size="17"/>下载<span v-if="activeCount" class="count-badge">{{ activeCount }}</span></h2>
